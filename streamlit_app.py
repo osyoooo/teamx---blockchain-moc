@@ -585,14 +585,17 @@ if st.session_state.demo_step >= 4:
         <h4 style="font-size: 1rem;">推奨プラットフォーム</h4>
         <p><strong>🟣 Polygon PoS（Amoy testnet / Mainnet）</strong></p>
         <ul style="font-size: 0.85rem;">
-            <li>EVM互換</li><li>高速処理（数秒/取引）</li><li>低コスト</li><li>環境負荷が少ない</li>
+            <li>EVM互換で開発が容易</li>
+            <li>高速処理（数秒/取引）</li>
+            <li>低コストで運用可能</li>
+            <li>環境負荷が少ない</li>
         </ul>
         <hr style="margin: 1rem 0;">
-        <h4 style="font-size: 1rem;">データ保存</h4>
+        <h4 style="font-size: 1rem;">データ保存方式</h4>
         <ul style="font-size: 0.85rem;">
-            <li><strong>メタデータ:</strong> ブロックチェーン上</li>
-            <li><strong>詳細データ:</strong> IPFSなど分散ストレージ</li>
-            <li><strong>バックアップ:</strong> 既存DB併用</li>
+            <li><strong>改ざん防止:</strong> ブロックチェーン上にハッシュ値</li>
+            <li><strong>詳細データ:</strong> 分散ストレージ（IPFS等）</li>
+            <li><strong>高速検索:</strong> 既存DBと併用</li>
         </ul>
     </div>
     <h3>🎯 期待効果</h3>
