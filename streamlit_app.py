@@ -34,11 +34,6 @@ st.set_page_config(
 # ==============================
 st.markdown("""
 <style>
-    /* スクロール位置をリセット */
-    html, body {
-        scroll-behavior: auto !important;
-    }
-    
     .stApp { max-width: 100%; padding: 0; }
     .main { padding: 0 1rem; }
     .main-header {
@@ -53,7 +48,20 @@ st.markdown("""
         background: white; padding: 1.5rem; border-radius: 15px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         margin-bottom: 1.5rem; border: 2px solid #f0f0f0;
+        animation: slideDown 0.5s ease-out;
     }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
     .highlight-box {
         background: #f8f9fa; padding: 1rem; border-radius: 10px;
         border-left: 4px solid #1e3c72; margin: 1rem 0; font-size: 0.9rem;
@@ -70,6 +78,11 @@ st.markdown("""
     }
     .step-indicator {
         background: #1e3c72; color: white; padding: 0.4rem 0.8rem;
+        border-radius: 20px; display: inline-block; margin-bottom: 1rem; font-size: 0.85rem;
+    }
+    
+    .step-completed {
+        background: #4caf50; color: white; padding: 0.4rem 0.8rem;
         border-radius: 20px; display: inline-block; margin-bottom: 1rem; font-size: 0.85rem;
     }
 
@@ -94,6 +107,25 @@ st.markdown("""
 
     /* h3 見出しのアンカーリンクアイコンを非表示 */
     h3 a, .stMarkdown h3 a, h3 .anchor, h3 .anchor-link { display: none !important; }
+    
+    /* 完了セクションを少し薄く */
+    .completed-section {
+        opacity: 0.9;
+    }
+    
+    /* プログレスバー */
+    .progress-container {
+        background: #f0f0f0;
+        border-radius: 10px;
+        height: 8px;
+        margin: 1rem 0;
+        overflow: hidden;
+    }
+    .progress-bar {
+        background: linear-gradient(90deg, #1e3c72, #2a5298);
+        height: 100%;
+        transition: width 0.5s ease;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -108,8 +140,9 @@ def clean_html(s: str) -> str:
     s = re.sub(r'^[ \t]+', '', s, flags=re.MULTILINE)
     return s.strip()
 
-def card(md: str):
-    st.markdown(f'<div class="demo-card">{clean_html(md)}</div>', unsafe_allow_html=True)
+def card(md: str, completed=False):
+    class_name = "demo-card completed-section" if completed else "demo-card"
+    st.markdown(f'<div class="{class_name}">{clean_html(md)}</div>', unsafe_allow_html=True)
 
 def hr():
     st.markdown('<hr class="soft-hr" />', unsafe_allow_html=True)
@@ -133,92 +166,29 @@ def _qp_update(**kwargs):
     except Exception:
         st.experimental_set_query_params(**kwargs)
 
-def goto(step: int):
-    # 遷移 → URL同期
-    st.session_state.demo_step = int(step)
-    st.session_state.need_scroll = True  # スクロールフラグを設定
-    _qp_update(step=str(step), api='1' if st.session_state.api_on else '0', scroll='1')
+def goto_next_step():
+    # 次のステップへ進む（スクロールは不要に）
+    st.session_state.demo_step += 1
+    _qp_update(step=str(st.session_state.demo_step), api='1' if st.session_state.api_on else '0')
     st.rerun()
 
-# スクロール用のアンカーを生成
-def create_scroll_anchor():
-    # ページトップにアンカーを作成
-    st.markdown('<div id="page-top"></div>', unsafe_allow_html=True)
-
-# 強制スクロールのJavaScript
-def force_scroll_to_top():
-    scroll_script = """
-    <script>
-        // Streamlitのアプリケーションフレーム内でスクロール
-        function forceScrollTop() {
-            // メインコンテナを探す
-            const appView = window.parent.document.querySelector('.main');
-            const stApp = window.parent.document.querySelector('.stApp');
-            
-            // 複数の方法でスクロールを試みる
-            if (appView) {
-                appView.scrollTop = 0;
-            }
-            if (stApp) {
-                stApp.scrollTop = 0;
-            }
-            
-            // 通常のスクロール
-            window.scrollTo(0, 0);
-            document.body.scrollTop = 0;
-            document.documentElement.scrollTop = 0;
-            
-            // iframeの親もスクロール
-            if (window.parent && window.parent !== window) {
-                try {
-                    window.parent.scrollTo(0, 0);
-                    // Streamlitのメインビューをスクロール
-                    const parentMain = window.parent.document.querySelector('[data-testid="stAppViewContainer"]');
-                    if (parentMain) {
-                        parentMain.scrollTop = 0;
-                    }
-                } catch(e) {}
-            }
-            
-            // ハッシュを使った強制スクロール
-            if (window.location.hash !== '#top') {
-                window.location.hash = 'top';
-            }
-        }
-        
-        // 即座に実行
-        forceScrollTop();
-        
-        // 段階的に再実行（Streamlitのレンダリング待ち）
-        setTimeout(forceScrollTop, 10);
-        setTimeout(forceScrollTop, 50);
-        setTimeout(forceScrollTop, 100);
-        setTimeout(forceScrollTop, 200);
-        setTimeout(forceScrollTop, 300);
-        setTimeout(forceScrollTop, 500);
-        
-        // DOMContentLoaded後も実行
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', forceScrollTop);
-        }
-        
-        // ページ完全読み込み後にも実行
-        window.addEventListener('load', forceScrollTop);
-    </script>
-    """
-    
-    # 複数の方法でJavaScriptを注入
-    placeholder = st.empty()
-    placeholder.markdown(scroll_script, unsafe_allow_html=True)
-    
-    # componentsも使用
-    if components is not None:
-        try:
-            components.html(scroll_script, height=0, scrolling=False)
-        except Exception:
-            pass
-    
-    return placeholder
+def reset_demo():
+    # デモをリセット
+    st.session_state.demo_step = 0
+    defaults = dict(
+        records=[],
+        show_certificate=False,
+        blockchain_recorded=False,
+        nft_issued=False,
+        hash_value=None,
+        block_info=None,
+        nft_hash=None,
+        certificate_id=None,
+    )
+    for k, v in defaults.items():
+        st.session_state[k] = v
+    _qp_update(step='0', api='1' if st.session_state.api_on else '0')
+    st.rerun()
 
 # --- APIラッパー ---
 def render_status_float(container, mode_on: bool, last_ok: bool | None):
@@ -289,16 +259,8 @@ if "api_on" not in st.session_state:
     if isinstance(raw_api, list):
         raw_api = raw_api[0]
     st.session_state.api_on = (raw_api is None) or (str(raw_api) == "1")  # デフォルトON
-
 if "api_last_ok" not in st.session_state:
     st.session_state.api_last_ok = None
-
-if "need_scroll" not in st.session_state:
-    qp = _qp_get()
-    scroll_param = qp.get("scroll")
-    if isinstance(scroll_param, list):
-        scroll_param = scroll_param[0]
-    st.session_state.need_scroll = (scroll_param == "1")
 
 defaults = dict(
     records=[],
@@ -314,26 +276,20 @@ for k, v in defaults.items():
     st.session_state.setdefault(k, v)
 
 # ==============================
-# ページトップアンカーとスクロール処理
-# ==============================
-# アンカーポイントを作成
-st.markdown('<a id="top"></a>', unsafe_allow_html=True)
-create_scroll_anchor()
-
-# スクロールが必要な場合、強制的にトップへ
-if st.session_state.need_scroll:
-    scroll_placeholder = force_scroll_to_top()
-    st.session_state.need_scroll = False
-    # URLパラメータからscrollフラグを削除
-    _qp_update(step=str(st.session_state.demo_step), api='1' if st.session_state.api_on else '0')
-
-# ==============================
 # ヘッダー（右上に⚙️ポップオーバー）
 # ==============================
 st.markdown("""
 <div class="main-header">
     <h1>🎓 Team X ブロックチェーン学習・実績証明</h1>
     <p>実績を永久に、確実に、証明する</p>
+</div>
+""", unsafe_allow_html=True)
+
+# プログレスバー
+progress = (st.session_state.demo_step / 3) * 100
+st.markdown(f"""
+<div class="progress-container">
+    <div class="progress-bar" style="width: {progress}%;"></div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -384,9 +340,15 @@ status_float = st.empty()
 render_status_float(status_float, st.session_state.api_on, st.session_state.api_last_ok)
 
 # ==============================
-# コンテンツ
+# コンテンツ（累積表示方式）
 # ==============================
-if st.session_state.demo_step == 0:
+
+# ステップ 0: はじめに（常に表示）
+if st.session_state.demo_step >= 0:
+    is_completed = st.session_state.demo_step > 0
+    if is_completed:
+        st.markdown('<div class="step-completed">✅ 導入: 完了</div>', unsafe_allow_html=True)
+    
     card("""
     <h3>🤔 現在の課題</h3>
     <div class="highlight-box">
@@ -406,13 +368,22 @@ if st.session_state.demo_step == 0:
             <li>💰 <strong>低コスト</strong>（1件1円）</li>
         </ul>
     </div>
-    """)
-    hr()
-    if primary_button("🚀 実際に体験してみる"):
-        goto(1)
+    """, completed=is_completed)
+    
+    if st.session_state.demo_step == 0:
+        hr()
+        if primary_button("🚀 実際に体験してみる"):
+            goto_next_step()
 
-elif st.session_state.demo_step == 1:
-    st.markdown('<div class="step-indicator">ステップ 1/3: 学習記録を保存</div>', unsafe_allow_html=True)
+# ステップ 1: 学習記録を保存
+if st.session_state.demo_step >= 1:
+    hr()
+    is_completed = st.session_state.demo_step > 1
+    if is_completed:
+        st.markdown('<div class="step-completed">✅ ステップ 1/3: 完了</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="step-indicator">ステップ 1/3: 学習記録を保存</div>', unsafe_allow_html=True)
+    
     card("""
     <h3>📝 拓叶さんが「Python基礎講座」を完了</h3>
     <div class="highlight-box">
@@ -421,23 +392,25 @@ elif st.session_state.demo_step == 1:
         <p><strong>完了日:</strong> 2025年8月30日</p>
         <p><strong>スコア:</strong> 95点</p>
     </div>
-    """)
-    if not st.session_state.blockchain_recorded:
-        if primary_button("🔗 ブロックチェーンに記録する"):
-            with st.spinner("記録を保存中..."):
-                time.sleep(1.2)
-            payload = f"拓叶-Python基礎講座-95点-{now_jst_str()}"
-            hash_value = hashlib.sha256(payload.encode("utf-8")).hexdigest()
-            st.session_state.hash_value = hash_value
-            st.session_state.block_info = {"number": 1247, "timestamp": now_jst_str()}
-            st.session_state.records.append({
-                "name": "拓叶", "course": "Python基礎講座", "score": 95,
-                "hash": hash_value, "date": "2025-08-30",
-            })
-            st.session_state.blockchain_recorded = True
-            st.rerun()
-    else:
-        primary_button("✅ ブロックチェーンに記録済み", disabled=True)
+    """, completed=is_completed)
+    
+    if st.session_state.demo_step == 1:
+        if not st.session_state.blockchain_recorded:
+            if primary_button("🔗 ブロックチェーンに記録する"):
+                with st.spinner("記録を保存中..."):
+                    time.sleep(1.2)
+                payload = f"拓叶-Python基礎講座-95点-{now_jst_str()}"
+                hash_value = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+                st.session_state.hash_value = hash_value
+                st.session_state.block_info = {"number": 1247, "timestamp": now_jst_str()}
+                st.session_state.records.append({
+                    "name": "拓叶", "course": "Python基礎講座", "score": 95,
+                    "hash": hash_value, "date": "2025-08-30",
+                })
+                st.session_state.blockchain_recorded = True
+                st.rerun()
+        else:
+            primary_button("✅ ブロックチェーンに記録済み", disabled=True)
 
     if st.session_state.blockchain_recorded and st.session_state.hash_value:
         card(f"""
@@ -455,16 +428,23 @@ elif st.session_state.demo_step == 1:
         <div class="benefit-box" style="background:#e8f4ff;border-color:#90caf9;">
             💡 学習記録もNFT証明書として発行できます
         </div>
-        """)
+        """, completed=is_completed)
 
-    if st.session_state.blockchain_recorded:
+    if st.session_state.demo_step == 1 and st.session_state.blockchain_recorded:
         st.markdown('<div class="step-nav">', unsafe_allow_html=True)
         if primary_button("次のステップへ →"):
-            goto(2)
+            goto_next_step()
         st.markdown('</div>', unsafe_allow_html=True)
 
-elif st.session_state.demo_step == 2:
-    st.markdown('<div class="step-indicator">ステップ 2/3: デジタル証明書の発行</div>', unsafe_allow_html=True)
+# ステップ 2: デジタル証明書の発行
+if st.session_state.demo_step >= 2:
+    hr()
+    is_completed = st.session_state.demo_step > 2
+    if is_completed:
+        st.markdown('<div class="step-completed">✅ ステップ 2/3: 完了</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="step-indicator">ステップ 2/3: デジタル証明書の発行</div>', unsafe_allow_html=True)
+    
     quests_json, ok = get_quests_available()
     quests = quests_json.get("quests", [])
     if isinstance(quests, list) and quests:
@@ -485,19 +465,23 @@ elif st.session_state.demo_step == 2:
         <p><strong>成果:</strong> フォロワー2,000人獲得</p>
         <p><strong>獲得スキル:</strong> SNS運用、マーケティング、データ分析</p>
     </div>
-    """)
-    if not st.session_state.show_certificate:
-        if primary_button("🎨 NFT証明書を発行"):
-            with st.spinner("NFT証明書を生成中..."):
-                time.sleep(1.2)
-            nft_data = f"QuestNFT-{quest_title}-拓叶-{now_jst_str()}"
-            st.session_state.nft_hash = hashlib.sha256(nft_data.encode("utf-8")).hexdigest()
-            st.session_state.certificate_id = "TXQ-0023"
-            st.session_state.show_certificate = True
-            st.session_state.nft_issued = True
-            st.rerun()
-    else:
-        primary_button("✅ NFT証明書発行済み", disabled=True)
+    """, completed=is_completed)
+    
+    if st.session_state.demo_step == 2:
+        if not st.session_state.show_certificate:
+            if primary_button("🎨 NFT証明書を発行"):
+                with st.spinner("NFT証明書を生成中..."):
+                    time.sleep(1.2)
+                nft_data = f"QuestNFT-{quest_title}-拓叶-{now_jst_str()}"
+                st.session_state.nft_hash = hashlib.sha256(nft_data.encode("utf-8")).hexdigest()
+                st.session_state.certificate_id = "TXQ-0023"
+                st.session_state.show_certificate = True
+                st.session_state.nft_issued = True
+                st.rerun()
+        else:
+            primary_button("✅ NFT証明書発行済み", disabled=True)
+    
+    if st.session_state.show_certificate:
         card(f"""
         <div class="certificate">
             <h3>🏅 デジタル証明書</h3>
@@ -508,8 +492,9 @@ elif st.session_state.demo_step == 2:
             <hr style="opacity: 0.3; margin: 1rem 0;">
             <p style="font-size: 0.85rem;">この証明書は世界中で有効です</p>
         </div>
-        """)
-        st.success("✅ NFT証明書が発行されました！")
+        """, completed=is_completed)
+        if st.session_state.demo_step == 2:
+            st.success("✅ NFT証明書が発行されました！")
 
     card("""
     <h3>🏢 採用企業での活用</h3>
@@ -526,18 +511,17 @@ elif st.session_state.demo_step == 2:
             <li>総合スコア: 782点</li>
         </ul>
     </div>
-    """)
-    st.markdown('<div class="step-nav">', unsafe_allow_html=True)
-    col_prev, col_next = st.columns(2)
-    with col_prev:
-        if primary_button("← 戻る"):
-            goto(1)
-    with col_next:
-        if primary_button("次のステップへ →", disabled=not st.session_state.nft_issued):
-            goto(3)
-    st.markdown('</div>', unsafe_allow_html=True)
+    """, completed=is_completed)
+    
+    if st.session_state.demo_step == 2 and st.session_state.nft_issued:
+        st.markdown('<div class="step-nav">', unsafe_allow_html=True)
+        if primary_button("次のステップへ →"):
+            goto_next_step()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-elif st.session_state.demo_step == 3:
+# ステップ 3: システムの全体像
+if st.session_state.demo_step >= 3:
+    hr()
     st.markdown('<div class="step-indicator">ステップ 3/3: システムの全体像</div>', unsafe_allow_html=True)
     profile_json, ok = get_profile()
     render_status_float(status_float, st.session_state.api_on, ok if st.session_state.api_on else None)
@@ -628,9 +612,7 @@ elif st.session_state.demo_step == 3:
 
     st.markdown('<div class="step-nav">', unsafe_allow_html=True)
     if primary_button("🔄 最初から見る"):
-        for k, v in defaults.items():
-            st.session_state[k] = v
-        goto(0)
+        reset_demo()
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ==============================
@@ -642,18 +624,3 @@ st.markdown("""
     <p>Team X - ブロックチェーン　モック</p>
 </div>
 """, unsafe_allow_html=True)
-
-# ==============================
-# ページ最下部でも再度スクロール処理（念のため）
-# ==============================
-if 'scroll_placeholder' in locals():
-    # 最後にもう一度スクロールを実行
-    st.markdown("""
-    <script>
-        setTimeout(function() {
-            window.scrollTo(0, 0);
-            document.body.scrollTop = 0;
-            document.documentElement.scrollTop = 0;
-        }, 800);
-    </script>
-    """, unsafe_allow_html=True)
