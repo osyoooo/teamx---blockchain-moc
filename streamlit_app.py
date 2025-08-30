@@ -580,7 +580,7 @@ if st.session_state.demo_step >= 4:
     """ + "\n".join(rec_html))
 
     card("""
-    <h3>🔧 ブロックチェーン実動モック構成案</h3>
+<h3>🔧 ブロックチェーン実動モック構成案</h3>
     <div class="highlight-box">
         <h4 style="font-size: 1rem;">ブロックチェーン関連技術</h4>
         
@@ -593,13 +593,14 @@ if st.session_state.demo_step >= 4:
         <ul style="font-size: 0.85rem;">
             <li>ブラウザだけで開発・テスト・デプロイが可能</li>
             <li>「学習記録のハッシュ値」と「記録日時」をイベントとしてオンチェーンに保存</li>
+            <li>必要に応じて ERC-721/1155 を実装し、NFT形式の修了証・証明書を発行する拡張にも対応可能</li>
         </ul>
     
         <p><strong>🔗 連携ライブラリ: wagmi + viem + RainbowKit</strong></p>
         <ul style="font-size: 0.85rem;">
             <li>wagmiのHooksとviemを使ってコントラクトを安全に呼び出し</li>
             <li>RainbowKitでウォレット接続ボタンを数行コードで実装</li>
-            <li>MetaMaskなど主要ウォレットに対応し、ユーザーが承認した取引をブロックチェーンに記録</li>
+            <li>MetaMaskなど主要ウォレットに対応し、ユーザーが承認した取引やNFTの受け取りを実現</li>
         </ul>
     </div>
     <h3>🎯 期待効果</h3>
