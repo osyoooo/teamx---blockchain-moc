@@ -30,35 +30,6 @@ st.set_page_config(
 )
 
 # ==============================
-# 自動スクロール用JavaScript注入（ページロード直後）
-# ==============================
-# ページロード時に即座にスクロールを実行
-scroll_js = """
-<script>
-    // 即座に実行
-    window.scrollTo(0, 0);
-    
-    // DOMContentLoaded時にも実行
-    document.addEventListener('DOMContentLoaded', function() {
-        window.scrollTo(0, 0);
-    });
-    
-    // 少し遅延して再実行（Streamlitのレンダリング完了待ち）
-    setTimeout(function() {
-        window.scrollTo(0, 0);
-    }, 100);
-    
-    // さらに遅延して再実行（念のため）
-    setTimeout(function() {
-        window.scrollTo(0, 0);
-    }, 500);
-</script>
-"""
-
-# ページ最上部に配置
-st.markdown(scroll_js, unsafe_allow_html=True)
-
-# ==============================
 # CSS（カード/ボタン/フローティング・ステータス、h3アンカー消し）
 # ==============================
 st.markdown("""
@@ -165,9 +136,89 @@ def _qp_update(**kwargs):
 def goto(step: int):
     # 遷移 → URL同期
     st.session_state.demo_step = int(step)
-    st.session_state.scroll_to_top = True  # スクロールフラグを設定
-    _qp_update(step=str(step), api='1' if st.session_state.api_on else '0')
+    st.session_state.need_scroll = True  # スクロールフラグを設定
+    _qp_update(step=str(step), api='1' if st.session_state.api_on else '0', scroll='1')
     st.rerun()
+
+# スクロール用のアンカーを生成
+def create_scroll_anchor():
+    # ページトップにアンカーを作成
+    st.markdown('<div id="page-top"></div>', unsafe_allow_html=True)
+
+# 強制スクロールのJavaScript
+def force_scroll_to_top():
+    scroll_script = """
+    <script>
+        // Streamlitのアプリケーションフレーム内でスクロール
+        function forceScrollTop() {
+            // メインコンテナを探す
+            const appView = window.parent.document.querySelector('.main');
+            const stApp = window.parent.document.querySelector('.stApp');
+            
+            // 複数の方法でスクロールを試みる
+            if (appView) {
+                appView.scrollTop = 0;
+            }
+            if (stApp) {
+                stApp.scrollTop = 0;
+            }
+            
+            // 通常のスクロール
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+            
+            // iframeの親もスクロール
+            if (window.parent && window.parent !== window) {
+                try {
+                    window.parent.scrollTo(0, 0);
+                    // Streamlitのメインビューをスクロール
+                    const parentMain = window.parent.document.querySelector('[data-testid="stAppViewContainer"]');
+                    if (parentMain) {
+                        parentMain.scrollTop = 0;
+                    }
+                } catch(e) {}
+            }
+            
+            // ハッシュを使った強制スクロール
+            if (window.location.hash !== '#top') {
+                window.location.hash = 'top';
+            }
+        }
+        
+        // 即座に実行
+        forceScrollTop();
+        
+        // 段階的に再実行（Streamlitのレンダリング待ち）
+        setTimeout(forceScrollTop, 10);
+        setTimeout(forceScrollTop, 50);
+        setTimeout(forceScrollTop, 100);
+        setTimeout(forceScrollTop, 200);
+        setTimeout(forceScrollTop, 300);
+        setTimeout(forceScrollTop, 500);
+        
+        // DOMContentLoaded後も実行
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', forceScrollTop);
+        }
+        
+        // ページ完全読み込み後にも実行
+        window.addEventListener('load', forceScrollTop);
+    </script>
+    """
+    
+    # 複数の方法でJavaScriptを注入
+    placeholder = st.empty()
+    placeholder.markdown(scroll_script, unsafe_allow_html=True)
+    
+    # componentsも使用
+    if components is not None:
+        try:
+            components.html(scroll_script, height=0, scrolling=False)
+        except Exception:
+            pass
+    
+    return placeholder
 
 # --- APIラッパー ---
 def render_status_float(container, mode_on: bool, last_ok: bool | None):
@@ -242,8 +293,12 @@ if "api_on" not in st.session_state:
 if "api_last_ok" not in st.session_state:
     st.session_state.api_last_ok = None
 
-if "scroll_to_top" not in st.session_state:
-    st.session_state.scroll_to_top = False
+if "need_scroll" not in st.session_state:
+    qp = _qp_get()
+    scroll_param = qp.get("scroll")
+    if isinstance(scroll_param, list):
+        scroll_param = scroll_param[0]
+    st.session_state.need_scroll = (scroll_param == "1")
 
 defaults = dict(
     records=[],
@@ -257,6 +312,20 @@ defaults = dict(
 )
 for k, v in defaults.items():
     st.session_state.setdefault(k, v)
+
+# ==============================
+# ページトップアンカーとスクロール処理
+# ==============================
+# アンカーポイントを作成
+st.markdown('<a id="top"></a>', unsafe_allow_html=True)
+create_scroll_anchor()
+
+# スクロールが必要な場合、強制的にトップへ
+if st.session_state.need_scroll:
+    scroll_placeholder = force_scroll_to_top()
+    st.session_state.need_scroll = False
+    # URLパラメータからscrollフラグを削除
+    _qp_update(step=str(st.session_state.demo_step), api='1' if st.session_state.api_on else '0')
 
 # ==============================
 # ヘッダー（右上に⚙️ポップオーバー）
@@ -575,50 +644,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================
-# ★ ページ遷移時の自動スクロール処理
+# ページ最下部でも再度スクロール処理（念のため）
 # ==============================
-# スクロールフラグがTrueの場合、またはページ初回読み込み時
-if st.session_state.get("scroll_to_top", False) or "page_loaded" not in st.session_state:
-    # より確実にスクロールを実行するJavaScript
-    auto_scroll_js = """
+if 'scroll_placeholder' in locals():
+    # 最後にもう一度スクロールを実行
+    st.markdown("""
     <script>
-        // 複数の方法でスクロールを試みる
-        function scrollToTop() {
+        setTimeout(function() {
             window.scrollTo(0, 0);
             document.body.scrollTop = 0;
             document.documentElement.scrollTop = 0;
-            
-            // iframeの場合の対処
-            if (window.parent && window.parent !== window) {
-                try {
-                    window.parent.scrollTo(0, 0);
-                } catch(e) {}
-            }
-        }
-        
-        // 即座に実行
-        scrollToTop();
-        
-        // 少し遅延して再実行（Streamlitのレンダリング待ち）
-        setTimeout(scrollToTop, 50);
-        setTimeout(scrollToTop, 150);
-        setTimeout(scrollToTop, 300);
-        
-        // ページ完全読み込み後にも実行
-        window.addEventListener('load', scrollToTop);
+        }, 800);
     </script>
-    """
-    
-    # 複数の方法でJavaScriptを注入
-    st.markdown(auto_scroll_js, unsafe_allow_html=True)
-    
-    # componentsが利用可能な場合は、こちらも使用
-    if components is not None:
-        try:
-            components.html(auto_scroll_js, height=0)
-        except Exception:
-            pass
-    
-    # フラグをリセット
-    st.session_state.scroll_to_top = False
-    st.session_state.page_loaded = True
+    """, unsafe_allow_html=True)
