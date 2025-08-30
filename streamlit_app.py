@@ -364,7 +364,6 @@ if st.session_state.demo_step >= 0:
             <li>🔒 <strong>改ざん不可能</strong>な記録</li>
             <li>🌍 <strong>世界中で証明</strong>可能</li>
             <li>♾️ <strong>永久保存</strong></li>
-            <li>💰 <strong>低コスト</strong>（1件1円）</li>
         </ul>
     </div>
     """, completed=is_completed)
@@ -581,20 +580,6 @@ if st.session_state.demo_step >= 4:
     """ + "\n".join(rec_html))
 
     card("""
-    <h3>💰 運用コスト</h3>
-    <div class="highlight-box">
-        <h4 style="font-size: 1rem;">月間1,000人利用時</h4>
-        <ul>
-            <li>記録1件: <strong>約1円</strong></li>
-            <li>月間記録数: 1,000件</li>
-        </ul>
-        <p style="text-align: center; margin-top: 1rem;">
-            <strong style="color: #1e3c72; font-size: 1.3rem;">月額: 約1,000円</strong>
-        </p>
-    </div>
-    """)
-
-    card("""
     <h3>🔧 技術仕様</h3>
     <div class="highlight-box">
         <h4 style="font-size: 1rem;">推奨プラットフォーム</h4>
@@ -615,7 +600,6 @@ if st.session_state.demo_step >= 4:
         <ul>
             <li>📈 <strong>信頼性向上</strong>による利用者増</li>
             <li>🤝 <strong>企業連携</strong>の拡大</li>
-            <li>🌟 <strong>ブランド価値</strong>の向上</li>
             <li>🔄 <strong>データ活用</strong>の新規事業</li>
         </ul>
     </div>
