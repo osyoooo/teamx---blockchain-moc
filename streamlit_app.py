@@ -417,7 +417,6 @@ if st.session_state.demo_step >= 1:
         <div class="highlight-box" style="background: #e8f5e9;">
             <p><strong>🔐 記録ID:</strong></p>
             <code>{st.session_state.hash_value[:24]}...</code>
-            <p style="margin-top: 1rem;"><em>この記録は永久に保存され、改ざんできません</em></p>
         </div>
         <div class="highlight-box" style="background: #f5f5f5;">
             <p><strong>📦 ブロック情報:</strong></p>
@@ -490,7 +489,6 @@ if st.session_state.demo_step >= 2:
             <p><strong>所有者:</strong> 拓叶</p>
             <p style="font-size: 0.7rem;"><strong>Hash:</strong> {st.session_state.nft_hash[:12]}...</p>
             <hr style="opacity: 0.3; margin: 1rem 0;">
-            <p style="font-size: 0.85rem;">この証明書は世界中で有効です</p>
         </div>
         """, completed=is_completed)
         if st.session_state.demo_step == 2:
