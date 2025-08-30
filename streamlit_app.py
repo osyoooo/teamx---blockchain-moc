@@ -286,7 +286,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # プログレスバー
-progress = (st.session_state.demo_step / 3) * 100
+progress = (st.session_state.demo_step / 4) * 100
 st.markdown(f"""
 <div class="progress-container">
     <div class="progress-bar" style="width: {progress}%;"></div>
@@ -432,7 +432,7 @@ if st.session_state.demo_step >= 1:
 
     if st.session_state.demo_step == 1 and st.session_state.blockchain_recorded:
         st.markdown('<div class="step-nav">', unsafe_allow_html=True)
-        if primary_button("次のステップへ →"):
+        if primary_button("次のステップへ"):
             goto_next_step()
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -495,7 +495,22 @@ if st.session_state.demo_step >= 2:
         """, completed=is_completed)
         if st.session_state.demo_step == 2:
             st.success("✅ NFT証明書が発行されました！")
+    
+    if st.session_state.demo_step == 2 and st.session_state.nft_issued:
+        st.markdown('<div class="step-nav">', unsafe_allow_html=True)
+        if primary_button("次のステップへ"):
+            goto_next_step()
+        st.markdown('</div>', unsafe_allow_html=True)
 
+# ステップ 3: 企業での活用
+if st.session_state.demo_step >= 3:
+    hr()
+    is_completed = st.session_state.demo_step > 3
+    if is_completed:
+        st.markdown('<div class="step-completed">✅ ステップ 3/4: 完了</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="step-indicator">ステップ 3/4: 企業での活用</div>', unsafe_allow_html=True)
+    
     card("""
     <h3>🏢 採用企業での活用</h3>
     <div class="benefit-box">
@@ -513,16 +528,28 @@ if st.session_state.demo_step >= 2:
     </div>
     """, completed=is_completed)
     
-    if st.session_state.demo_step == 2 and st.session_state.nft_issued:
+    card("""
+    <h3>🔍 証明書の検証プロセス</h3>
+    <div class="highlight-box">
+        <ol style="font-size: 0.9rem;">
+            <li><strong>証明書IDの入力</strong><br>応募者が提出した証明書IDを入力</li>
+            <li><strong>ブロックチェーン照会</strong><br>分散台帳から該当記録を検索</li>
+            <li><strong>真正性の確認</strong><br>改ざん不可能なデータで実績を確認</li>
+            <li><strong>詳細情報の取得</strong><br>学習履歴、スコア、完了日時を確認</li>
+        </ol>
+    </div>
+    """, completed=is_completed)
+    
+    if st.session_state.demo_step == 3:
         st.markdown('<div class="step-nav">', unsafe_allow_html=True)
-        if primary_button("次のステップへ →"):
+        if primary_button("次のステップへ"):
             goto_next_step()
         st.markdown('</div>', unsafe_allow_html=True)
 
-# ステップ 3: システムの全体像
-if st.session_state.demo_step >= 3:
+# ステップ 4: システムの全体像
+if st.session_state.demo_step >= 4:
     hr()
-    st.markdown('<div class="step-indicator">ステップ 3/3: システムの全体像</div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-indicator">ステップ 4/4: システムの全体像</div>', unsafe_allow_html=True)
     profile_json, ok = get_profile()
     render_status_float(status_float, st.session_state.api_on, ok if st.session_state.api_on else None)
 
