@@ -4,21 +4,15 @@ import time
 import hashlib
 import requests
 import streamlit as st
+import streamlit.components.v1 as components  # スクロール用に使用
 from html import escape
 from textwrap import dedent
 from datetime import datetime, timezone, timedelta
-
-# components はフォールバック用に遅延import（未使用環境でもエラーにしない）
-try:
-    import streamlit.components.v1 as components
-except Exception:
-    components = None
 
 # ==============================
 # 基本設定（環境変数/Secrets対応）
 # ==============================
 DEFAULT_API_BASE = "https://teamx-quest-api-234584649227.asia-northeast1.run.app"
-# 優先順: 1) OS環境変数 2) Streamlit Secrets 3) デフォルト
 API_BASE_URL = os.getenv("API_BASE_URL") or st.secrets.get("API_BASE_URL", DEFAULT_API_BASE)
 JST = timezone(timedelta(hours=9))
 
@@ -26,7 +20,7 @@ st.set_page_config(
     page_title="Team X ブロックチェーン学習証明",
     page_icon="🎓",
     layout="centered",
-    initial_sidebar_state="collapsed"  # サイドバーは使わない
+    initial_sidebar_state="collapsed"
 )
 
 # ==============================
@@ -68,7 +62,6 @@ st.markdown("""
         border-radius: 20px; display: inline-block; margin-bottom: 1rem; font-size: 0.85rem;
     }
 
-    /* ボタンはカード/ナビ内のみワイド化 */
     .demo-card div[data-testid="stButton"] > button,
     .step-nav  div[data-testid="stButton"] > button { width: 100%; padding: 0.8rem; font-size: 1rem; }
     .demo-card div[data-testid="stButton"] > button:disabled,
@@ -129,8 +122,9 @@ def _qp_update(**kwargs):
         st.experimental_set_query_params(**kwargs)
 
 def goto(step: int):
-    # 遷移 → URL同期（自動スクロールは実行末尾で発火）
+    """ステップ遷移。次フレームでトップへ強制スクロールするフラグを立てる"""
     st.session_state.demo_step = int(step)
+    st.session_state._force_scroll_top = True
     _qp_update(step=str(step), api='1' if st.session_state.api_on else '0')
     st.rerun()
 
@@ -202,7 +196,7 @@ if "api_on" not in st.session_state:
     raw_api = qp.get("api")
     if isinstance(raw_api, list):
         raw_api = raw_api[0]
-    st.session_state.api_on = (raw_api is None) or (str(raw_api) == "1")  # デフォルトON
+    st.session_state.api_on = (raw_api is None) or (str(raw_api) == "1")
 if "api_last_ok" not in st.session_state:
     st.session_state.api_last_ok = None
 
@@ -229,10 +223,9 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ヘッダー直下の右寄せ行に、控えめな設定ボタン
 c_left, c_right = st.columns([1, 5])
 with c_right:
-    cols = st.columns([8, 2])  # 右端に小さく
+    cols = st.columns([8, 2])
     with cols[1]:
         try:
             with st.popover("⚙️", use_container_width=False):
@@ -271,7 +264,7 @@ with c_right:
                     else:
                         st.warning("APIに接続できません（フォールバック表示）。")
 
-# 右下のフローティング・ステータス（常に1つだけ）
+# 右下ステータス
 status_float = st.empty()
 render_status_float(status_float, st.session_state.api_on, st.session_state.api_last_ok)
 
@@ -536,17 +529,21 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================
-# ★ 実行の「最後」に自動スクロール（余白を出さない）
+# ★ 遷移フラグが立っている時だけ、末尾で強制スクロール（連続リトライ）
 # ==============================
-def _auto_scroll_top():
-    js = "window.scrollTo({top:0, behavior:'smooth'});"
-    # 1) st.html が使える環境ならこれが最も確実
-    try:
-        st.html(f"<script>{js}</script>", height=0)  # type: ignore[attr-defined]
-        return
-    except Exception:
-        pass
-    # 2) フォールバック：components.html（高さ0で余白を作らない）
-    if components is not None:
-        components.html(f"<script>{js}</script>", height=0)
-_auto_scroll_top()
+if st.session_state.pop("_force_scroll_top", False):
+    # 0ms〜750msまで、合計6回スクロール命令を再送（レンダ完了・復元動作に勝つ）
+    components.html("""
+    <script>
+      (function(){
+        function topNow(){
+          try{ (window.parent||window).scrollTo({top:0, behavior:'auto'}); }
+          catch(e){ window.scrollTo({top:0, behavior:'auto'}); }
+        }
+        topNow();
+        [0,150,300,450,600,750].forEach(function(ms){
+          setTimeout(topNow, ms);
+        });
+      })();
+    </script>
+    """, height=0)
