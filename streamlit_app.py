@@ -23,7 +23,7 @@ API_BASE_URL = os.getenv("API_BASE_URL") or st.secrets.get("API_BASE_URL", DEFAU
 JST = timezone(timedelta(hours=9))
 
 st.set_page_config(
-    page_title="Team X ブロックチェーン学習証明",
+    page_title="Team X ブロックチェーン学習・クエスト証明",
     page_icon="🎓",
     layout="centered",
     initial_sidebar_state="collapsed"  # サイドバーは使わない
