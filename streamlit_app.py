@@ -4,10 +4,15 @@ import time
 import hashlib
 import requests
 import streamlit as st
-import streamlit.components.v1 as components
 from html import escape
 from textwrap import dedent
 from datetime import datetime, timezone, timedelta
+
+# components はフォールバック用に遅延import（未使用環境でもエラーにしない）
+try:
+    import streamlit.components.v1 as components
+except Exception:
+    components = None
 
 # ==============================
 # 基本設定（環境変数/Secrets対応）
@@ -23,26 +28,6 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="collapsed"  # サイドバーは使わない
 )
-
-# --- 先頭へスクロール（リロード/再実行ごとに実行） ---
-def scroll_to_top(behavior: str = "smooth"):
-    # parent があれば親ウィンドウ、なければ自身をスクロール
-    script = f"""
-    <script>
-      (function(){{
-        try {{
-          var w = window.parent || window;
-          w.scrollTo({{top:0, behavior:'{behavior}'}});
-        }} catch(e) {{
-          window.scrollTo({{top:0, behavior:'{behavior}'}});
-        }}
-      }})();
-    </script>
-    """
-    components.html(script, height=0, width=0)
-
-# 読み込み/再実行のたびに先頭へ
-scroll_to_top("smooth")
 
 # ==============================
 # CSS（カード/ボタン/フローティング・ステータス、h3アンカー消し）
@@ -144,7 +129,7 @@ def _qp_update(**kwargs):
         st.experimental_set_query_params(**kwargs)
 
 def goto(step: int):
-    # 遷移 → URL同期（上部スクロールは再実行時に自動で効く）
+    # 遷移 → URL同期（自動スクロールは実行末尾で発火）
     st.session_state.demo_step = int(step)
     _qp_update(step=str(step), api='1' if st.session_state.api_on else '0')
     st.rerun()
@@ -501,7 +486,7 @@ elif st.session_state.demo_step == 3:
         <ul style="font-size: 0.85rem;">
             <li>EVM互換</li><li>高速処理（数秒/取引）</li><li>低コスト</li><li>環境負荷が少ない</li>
         </ul>
-        <hr style="margin: 1rem 0%;">
+        <hr style="margin: 1rem 0;">
         <h4 style="font-size: 1rem;">データ保存</h4>
         <ul style="font-size: 0.85rem;">
             <li><strong>メタデータ:</strong> ブロックチェーン上</li>
@@ -549,3 +534,19 @@ st.markdown("""
     <p>Team X - ブロックチェーン　モック</p>
 </div>
 """, unsafe_allow_html=True)
+
+# ==============================
+# ★ 実行の「最後」に自動スクロール（余白を出さない）
+# ==============================
+def _auto_scroll_top():
+    js = "window.scrollTo({top:0, behavior:'smooth'});"
+    # 1) st.html が使える環境ならこれが最も確実
+    try:
+        st.html(f"<script>{js}</script>", height=0)  # type: ignore[attr-defined]
+        return
+    except Exception:
+        pass
+    # 2) フォールバック：components.html（高さ0で余白を作らない）
+    if components is not None:
+        components.html(f"<script>{js}</script>", height=0)
+_auto_scroll_top()
