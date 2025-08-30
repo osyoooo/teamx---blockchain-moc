@@ -580,22 +580,26 @@ if st.session_state.demo_step >= 4:
     """ + "\n".join(rec_html))
 
     card("""
-    <h3>🔧 技術仕様</h3>
+    <h3>🔧 ブロックチェーン実動モック構成案</h3>
     <div class="highlight-box">
-        <h4 style="font-size: 1rem;">推奨プラットフォーム</h4>
-        <p><strong>🟣 Polygon PoS（Amoy testnet / Mainnet）</strong></p>
+        <h4 style="font-size: 1rem;">ブロックチェーン関連技術</h4>
+        
+        <p><strong>🟣 ブロックチェーン: Polygon PoS (Amoy testnet)</strong></p>
         <ul style="font-size: 0.85rem;">
-            <li>EVM互換で開発が容易</li>
-            <li>高速処理（数秒/取引）</li>
-            <li>低コストで運用可能</li>
-            <li>環境負荷が少ない</li>
+            <li>無料MATICで実際の取引と同じ流れを体験できるテストネット</li>
         </ul>
-        <hr style="margin: 1rem 0;">
-        <h4 style="font-size: 1rem;">データ保存方式</h4>
+        
+        <p><strong>📝 スマートコントラクト: Solidity + Remix IDE</strong></p>
         <ul style="font-size: 0.85rem;">
-            <li><strong>改ざん防止:</strong> ブロックチェーン上にハッシュ値</li>
-            <li><strong>詳細データ:</strong> 分散ストレージ（IPFS等）</li>
-            <li><strong>高速検索:</strong> 既存DBと併用</li>
+            <li>ブラウザだけで開発・テスト・デプロイが可能</li>
+            <li>「学習記録のハッシュ値」と「記録日時」をイベントとしてオンチェーンに保存</li>
+        </ul>
+    
+        <p><strong>🔗 連携ライブラリ: wagmi + viem + RainbowKit</strong></p>
+        <ul style="font-size: 0.85rem;">
+            <li>wagmiのHooksとviemを使ってコントラクトを安全に呼び出し</li>
+            <li>RainbowKitでウォレット接続ボタンを数行コードで実装</li>
+            <li>MetaMaskなど主要ウォレットに対応し、ユーザーが承認した取引をブロックチェーンに記録</li>
         </ul>
     </div>
     <h3>🎯 期待効果</h3>
